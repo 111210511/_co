@@ -43,25 +43,34 @@ CHIP ALU {
 
     PARTS:
     // Put you code here:
-    Mux16 (a=x , b=false , sel=zx , out=nx1);
-    Not16 (in=nx1 , out=nx2);
-    Mux16 (a=nx1 , b=nx2 , sel=nx , out=nx3);
+    // Process x
+    Mux16(a=x, b=false, sel=zx, out=xZeroed); // Zero x if zx is 1
+    Not16(in=xZeroed, out=xNot); // Negate xZeroed
+    Mux16(a=xZeroed, b=xNot, sel=nx, out=xProcessed); // Use x or ~x based on nx
 
-    Mux16 (a=y , b=false , sel=zy , out=ny1);
-    Not16 (in=ny1 , out=ny2);
-    Mux16 (a=ny1 , b=ny2 , sel=ny , out=ny3);
+    // Process y
+    Mux16(a=y, b=false, sel=zy, out=yZeroed); // Zero y if zy is 1
+    Not16(in=yZeroed, out=yNot); // Negate yZeroed
+    Mux16(a=yZeroed, b=yNot, sel=ny, out=yProcessed); // Use y or ~y based on ny
 
-    And16 (a=nx3 , b=ny3 , out=nxy1); 
-    Add16 (a=nx3 , b=ny3 , out=nxy2);
+    // Perform operation
+    And16(a=xProcessed, b=yProcessed, out=andResult); // AND operation
+    Add16(a=xProcessed, b=yProcessed, out=addResult); // Add operation
+    Mux16(a=andResult, b=addResult, sel=f, out=aluOutput); // Select AND or ADD
 
-    Mux16 (a=nxy1 , b=nxy2 , sel=f , out=nxy3);
-    Not16 (in=nxy3 , out=nxy4);
+    // Final output processing
+    Not16(in=aluOutput, out=aluNot); // Negate aluOutput
+    Mux16(a=aluOutput, b=aluNot, sel=no, out=out); // Use aluOutput or ~aluOutput based on no
 
-    Mux16 (a=nxy3 , b=nxy4 , sel=no , out=out , out[0..7]=out1 , out[8..15]=out2 , out[15]=ng);
+    // Compute zr (zero flag)
+    Mux16(a=aluOutput,b=aluNot,sel=no,out[0..7]=zrout1,out[8..15]=zrout2);
+    Or8Way(in=zrout1, out=lowOr); // Combine first 8 bits
+    Or8Way(in=zrout2, out=highOr); // Combine last 8 bits
+    Or(a=lowOr, b=highOr, out=anyBitSet); // Combine all bits
+    Not(in=anyBitSet, out=zr); // Set zr to 1 if out is zero
 
-    Or8Way (in=out1 , out=or1);
-    Or8Way (in=out2 , out=or2);
-    Or (a=or1 , b=or2 , out=or3);
-
-    Not (in=or3 , out=zr);
-}
+    // Compute ng (negative flag)
+    And16(a[0..7]=zrout1,a[8..15]=zrout2,b[0..14]=false,b[15]=true,out[0..7]=Ang,out[8..15]=Bng);  
+     Or8Way(in=Bng,out=Ong);
+     Mux(a=false,b=true,sel=Ong,out=ng);
+}   

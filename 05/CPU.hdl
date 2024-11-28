@@ -39,5 +39,54 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+    // === 指令解析 ===
+    // 判斷是否是 C 指令
+    Or(a=instruction[15], b=false, out=isCInstruction);
+
+    // 提取指令字段
+    Mux16(a=instruction, b=aRegister, sel=isCInstruction, out=aMuxOut); // 選擇 A 寄存器的輸入
+    And(a=instruction[15], b=true, out=loadA);                          // 判斷是否加載 A
+    Register(in=aMuxOut, load=loadA, out=aRegister);                    // A 寄存器
+    Mux16(a=instruction[0..12], b=inM, sel=instruction[3], out=addressM); // 記憶體地址
+
+    // === D 寄存器 ===
+    // 根據 C 指令的 D 位控制 D 寄存器
+    Register(in=aluOutput, load=instruction[4], out=dRegister); // 加載 D 寄存器
+
+    // === ALU 控制 ===
+    // ALU 的輸入由 D 和 A 寄存器（或 M 記憶體）控制
+    Mux16(a=aRegister, b=inM, sel=instruction[12], out=aluY); // 根據指令選擇 ALU 的 Y 輸入
+    ALU(
+        x=dRegister,
+        y=aluY,
+        zx=instruction[11],
+        nx=instruction[10],
+        zy=instruction[9],
+        ny=instruction[8],
+        f=instruction[7],
+        no=instruction[6],
+        out=aluOutput,
+        zr=aluZr,
+        ng=aluNg
+    );
+
+    // === 跳轉邏輯 ===
+    // 基於 ALU 結果和 C 指令的跳轉字段更新 PC
+    Or(a=aluNg, b=false, out=ngCondition); // 負跳轉條件
+    Or(a=aluZr, b=false, out=zrCondition); // 零跳轉條件
+    Not(in=aluZr, out=posCondition);       // 正跳轉條件（非零）
+
+    And(a=instruction[2], b=ngCondition, out=jumpNg); // 跳轉負
+    And(a=instruction[1], b=zrCondition, out=jumpZr); // 跳轉零
+    And(a=instruction[0], b=posCondition, out=jumpPos); // 跳轉正
+    Or(a=jumpNg, b=jumpZr, out=jumpCond);
+    Or(a=jumpCond, b=jumpPos, out=pcLoad);
+
+    // === 程式計數器（PC）===
+    PC(in=aRegister, load=pcLoad, inc=true, reset=reset, out=pc);
+
+    // === 輸出控制 ===
+    // 記憶體的輸出來自 ALU 的結果
+    And(a=instruction[3], b=isCInstruction, out=writeM); // 當 C 指令的 D 字段指示寫入時啟用
+    Mux16(a=false, b=aluOutput, sel=writeM, out=outM);
 }
