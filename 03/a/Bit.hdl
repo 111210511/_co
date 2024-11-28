@@ -14,5 +14,9 @@ CHIP Bit {
     OUT out;
 
     PARTS:
-    // Put your code here:
+    // 使用 Mux 根據 load 信號來選擇是寫入新值還是保持舊值
+    Mux(a=n2, b=in, sel=load, out=n1);  // 當 load 為 1 時，選擇 in；當 load 為 0 時，選擇 out
+
+    // 使用 DFF 將選擇的值存儲到 out 並更新
+    DFF(in=n1, out=out,out=n2);  // DFF 寫入 n1 並更新 out
 }
