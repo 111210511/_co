@@ -17,4 +17,22 @@ CHIP PC {
 
     PARTS:
     // Put your code here:
+    // First, handle the increment operation
+    // Add 1 to the current value if inc is true
+    Inc16(in=feedback, out=plusone);
+    
+    // Now we'll build our control logic from lowest to highest precedence
+    // First level: Choose between keeping current value or incrementing
+    Mux16(a=feedback, b=plusone, sel=inc, out=incout);
+    
+    // Second level: If load is true, use input value instead
+    Mux16(a=incout, b=in, sel=load, out=loadout);
+    
+    // Third level: If reset is true, use zero instead
+    // We create a zero value by using the built-in constant
+    Mux16(a=loadout, b=false, sel=reset, out=toregister);
+    
+    // Finally, store the result in the register
+    // The register's output feeds back to the start for the next cycle
+    Register(in=toregister, load=true, out=out, out=feedback);
 }
