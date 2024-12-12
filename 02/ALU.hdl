@@ -42,8 +42,6 @@ CHIP ALU {
         ng; // 1 if (out < 0),  0 otherwise
 
     PARTS:
-    // Put you code here:
-    // Process x
     Mux16(a=x, b=false, sel=zx, out=xZeroed); // Zero x if zx is 1
     Not16(in=xZeroed, out=xNot); // Negate xZeroed
     Mux16(a=xZeroed, b=xNot, sel=nx, out=xProcessed); // Use x or ~x based on nx
@@ -60,17 +58,14 @@ CHIP ALU {
 
     // Final output processing
     Not16(in=aluOutput, out=aluNot); // Negate aluOutput
-    Mux16(a=aluOutput, b=aluNot, sel=no, out=out); // Use aluOutput or ~aluOutput based on no
+    Mux16(a=aluOutput, b=aluNot, sel=no, out=out, out[15]=ng1, out[0..7]=outLow, out[8..15]=outHigh); // Use aluOutput or ~aluOutput based on no
 
     // Compute zr (zero flag)
-    Mux16(a=aluOutput,b=aluNot,sel=no,out[0..7]=zrout1,out[8..15]=zrout2);
-    Or8Way(in=zrout1, out=lowOr); // Combine first 8 bits
-    Or8Way(in=zrout2, out=highOr); // Combine last 8 bits
+    Or8Way(in=outLow, out=lowOr); // Combine first 8 bits
+    Or8Way(in=outHigh, out=highOr); // Combine last 8 bits
     Or(a=lowOr, b=highOr, out=anyBitSet); // Combine all bits
     Not(in=anyBitSet, out=zr); // Set zr to 1 if out is zero
 
     // Compute ng (negative flag)
-    And16(a[0..7]=zrout1,a[8..15]=zrout2,b[0..14]=false,b[15]=true,out[0..7]=Ang,out[8..15]=Bng);  
-     Or8Way(in=Bng,out=Ong);
-     Mux(a=false,b=true,sel=Ong,out=ng);
+    And(a=ng1, b=true, out=ng); // ng is 1 if most significant bit of out is 1
 }   
