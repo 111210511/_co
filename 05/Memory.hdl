@@ -27,5 +27,23 @@ CHIP Memory {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+    // Determine which memory segment to access based on address[13..14]
+    DMux4Way(in=load, sel=address[13..14], 
+             a=loadRAM1, b=loadRAM2, c=loadScreen, d=loadKBD);
+
+    // Combine RAM load signals
+    Or(a=loadRAM1, b=loadRAM2, out=loadRAM);
+
+    // Main RAM (16K = 2 * 8K)
+    RAM16K(in=in, load=loadRAM, address=address[0..13], out=ramOut);
+
+    // Screen memory map (8K)
+    Screen(in=in, load=loadScreen, address=address[0..12], out=screenOut);
+
+    // Keyboard memory map
+    Keyboard(out=kbdOut);
+
+    // Select output based on address[13..14]
+    Mux4Way16(a=ramOut, b=ramOut, c=screenOut, d=kbdOut,
+              sel=address[13..14], out=out);
 }
